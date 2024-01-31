@@ -29,6 +29,7 @@ FAST_MODEL = "gpt-3.5-turbo"
 #   The [ \t]* matches the potential spaces before closing ``` (the spec allows indentation).
 CODE_BLOCK_PATTERN = r"```[ \t]*(\w+)?[ \t]*\r?\n(.*?)\r?\n[ \t]*```"
 WORKING_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "extensions")
+print(f'@@@ working directory = {WORKING_DIR}', flush=True)
 UNKNOWN = "unknown"
 TIMEOUT_MSG = "Timeout"
 DEFAULT_TIMEOUT = 600
@@ -306,6 +307,7 @@ def execute_code(
     if code is not None:
         with open(filepath, "w", encoding="utf-8") as fout:
             fout.write(code)
+            print(f'>>> Code file {filepath} was successfully CREATED')
     # check if already running in a docker container
     in_docker_container = os.path.exists("/.dockerenv")
     if not use_docker or in_docker_container:
@@ -336,6 +338,7 @@ def execute_code(
                 except TimeoutError:
                     if original_filename is None:
                         os.remove(filepath)
+                    print(f'>>> Code file {filepath} was NOT successfully EXECUTED')
                     return 1, TIMEOUT_MSG, None
         if original_filename is None:
             os.remove(filepath)
@@ -349,6 +352,7 @@ def execute_code(
                 logs = logs.replace(str(abs_path), "")
         else:
             logs = result.stdout
+        print(f'>>> Code file {filepath} was {"NOT" if result.returncode else ""} successfully EXECUTED')
         return result.returncode, logs, None
 
     # create a docker client

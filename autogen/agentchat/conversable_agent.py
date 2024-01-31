@@ -761,11 +761,15 @@ class ConversableAgent(Agent):
                 else:
                     messages_to_scan += 1
 
+        print(f'the number of messages that will be searched for code blocks is: {messages_to_scan}', flush=True)
+
         # iterate through the last n messages in reverse
         # if code blocks are found, execute the code blocks and return the output
         # if no code blocks are found, continue
+        
+        return_str = '' # we are now going to process multiple messages together. Need to aggregate responses from all the code blocks inside all those messages
         for i in range(min(len(messages), messages_to_scan)):
-            message = messages[-(i + 1)]
+            message = messages[-(messages_to_scan-i)] # process the messages from earliest to last instead
             if not message["content"]:
                 continue
             code_blocks = extract_code(message["content"])
@@ -774,14 +778,17 @@ class ConversableAgent(Agent):
 
             # found code blocks, execute code and push "last_n_messages" back
             exitcode, logs = self.execute_code_blocks(code_blocks)
-            code_execution_config["last_n_messages"] = last_n_messages
             exitcode2str = "execution succeeded" if exitcode == 0 else "execution failed"
-            return True, f"exitcode: {exitcode} ({exitcode2str})\nCode output: {logs}"
+            return_str += f"exitcode: {exitcode} ({exitcode2str})\nCode output: {logs}\n"
+        if return_str:
+            code_execution_config["last_n_messages"] = last_n_messages
+            return True, return_str
+        else:
+            # no code blocks are found, push last_n_messages back and return.
+            code_execution_config["last_n_messages"] = last_n_messages
+            print(f'!!!! no code blocks found in the last {last_n_messages} messages  !!!!', flush=True)
 
-        # no code blocks are found, push last_n_messages back and return.
-        code_execution_config["last_n_messages"] = last_n_messages
-
-        return False, None
+            return False, None
 
     def generate_function_call_reply(
         self,
@@ -1368,8 +1375,8 @@ class ConversableAgent(Agent):
             if image is not None:
                 self._code_execution_config["use_docker"] = image
             logs_all += "\n" + logs
-            if exitcode != 0:
-                return exitcode, logs_all
+            # if exitcode != 0: # commenting this out because we want all code blocks to be executed along with exitcodes. This can then be examined
+            #     return exitcode, logs_all
         return exitcode, logs_all
 
     @staticmethod
